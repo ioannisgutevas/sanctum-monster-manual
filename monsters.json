@@ -2,17 +2,17 @@
   {
     "name": "The Saint's Residue",
     "category": "Undead",
-    "type": "Large Undead (Aberration), Lawful Evil",
+    "type": "Large Undead (Aberration)",
     "cr": 5,
     "tags": [
       "Boss",
       "Necrotic",
-      "Radiant",
+      "Sanctum",
       "Corrupted Faith",
-      "Legendary Actions",
-      "Sanctum"
+      "Legendary",
+      "Undead"
     ],
-    "url": "monsters/the saints residue.html",
-    "description": "A corrupted relic of faith and undeath preserved within the Sanctum Archives."
+    "url": "monsters/the-saints-residue.html",
+    "description": "A corrupted relic of faith and undeath preserved within The Sanctum Archives."
   }
 ]
