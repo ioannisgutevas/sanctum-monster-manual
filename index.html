@@ -368,6 +368,8 @@ h1{
 </div>
 
 <script>
+const WEBFLOW_MONSTER_MANUAL_URL = "https://www.ioannisgutevas.com/dnd-archives/monster-manual";
+
 const SAMPLE_MONSTERS = [
   {
     name: "The Saint's Residue",
@@ -405,10 +407,13 @@ async function loadMonsters(){
   }
 
   buildCategoryFilter();
+  openMonsterFromQuery();
   applyFilters();
 }
 
 function buildCategoryFilter(){
+  categoryFilter.innerHTML = '<option value="">All Categories</option>';
+
   const categories = [...new Set(monsters.map(m => m.category).filter(Boolean))].sort();
 
   categories.forEach(category => {
@@ -450,6 +455,10 @@ function isCRInRange(cr, range){
   return cr >= min && cr <= max;
 }
 
+function getWebflowMonsterUrl(monsterUrl){
+  return `${WEBFLOW_MONSTER_MANUAL_URL}?monster=${encodeURIComponent(monsterUrl)}`;
+}
+
 function renderMonsters(){
   grid.innerHTML = "";
 
@@ -482,7 +491,7 @@ function renderMonsters(){
 
       <div class="card-actions">
         <button class="btn" type="button" data-open="${escapeHTML(monster.url)}" data-name="${escapeHTML(monster.name)}">Open Codex</button>
-        <a class="btn" href="${escapeHTML(monster.url)}" target="_blank" rel="noopener">New Tab</a>
+        <a class="btn" href="${getWebflowMonsterUrl(monster.url)}" target="_blank" rel="noopener">New Tab</a>
       </div>
     `;
 
@@ -503,6 +512,16 @@ function closeMonster(){
   viewer.setAttribute("aria-hidden", "true");
   viewerFrame.src = "";
   document.body.style.overflow = "";
+}
+
+function openMonsterFromQuery(){
+  const params = new URLSearchParams(window.location.search);
+  const monsterUrl = params.get("monster");
+
+  if(!monsterUrl) return;
+
+  const match = monsters.find(monster => monster.url === monsterUrl);
+  openMonster(monsterUrl, match ? match.name : "Monster Codex");
 }
 
 function escapeHTML(value){
