@@ -11,7 +11,18 @@ function titleFromFilename(filename) {
     .replace(/\b\w/g, char => char.toUpperCase());
 }
 
+function getAttr(html, attr) {
+  const bodyMatch = html.match(/<body[^>]*>/i);
+  const source = bodyMatch ? bodyMatch[0] : html;
+  const regex = new RegExp(`${attr}\\s*=\\s*["']([^"']*)["']`, "i");
+  const match = source.match(regex);
+  return match ? match[1].trim() : "";
+}
+
 function getMeta(html, key) {
+  const attrValue = getAttr(html, `data-monster-${key.toLowerCase()}`);
+  if (attrValue) return attrValue;
+
   const patterns = [
     new RegExp(`MONSTER_${key}:\\s*(.+)`, "i"),
     new RegExp(`<meta\\s+name=["']monster:${key.toLowerCase()}["']\\s+content=["']([^"']+)["']`, "i")
@@ -26,6 +37,9 @@ function getMeta(html, key) {
 }
 
 function getTitle(html, fallback) {
+  const dataTitle = getMeta(html, "TITLE");
+  if (dataTitle) return dataTitle;
+
   const h1 = html.match(/<h1[^>]*>(.*?)<\/h1>/is);
   if (h1) return h1[1].replace(/<[^>]+>/g, "").trim();
 
@@ -58,15 +72,19 @@ function scanDirectory(dir, baseDir = MONSTERS_DIR) {
       .split(path.sep)
       .filter(Boolean)[0];
 
-    const name = getMeta(html, "NAME") || getTitle(html, fallbackName);
+    const name = getMeta(html, "TITLE") || getMeta(html, "NAME") || getTitle(html, fallbackName);
     const category = getMeta(html, "CATEGORY") || categoryFromFolder || "Uncategorized";
     const type = getMeta(html, "TYPE") || "Custom Monster";
-    const cr = Number(getMeta(html, "CR")) || "?";
+
+    const crRaw = getMeta(html, "CR");
+    const crNumber = Number(crRaw);
+    const cr = Number.isFinite(crNumber) ? crNumber : "?";
+
     const description = getMeta(html, "DESCRIPTION") || "A custom Sanctum monster codex entry.";
     const tagsRaw = getMeta(html, "TAGS");
 
     monsters.push({
-      id: entry.name.replace(/\.html$/i, ""),
+      id: getMeta(html, "ID") || entry.name.replace(/\.html$/i, ""),
       name,
       category,
       type,
