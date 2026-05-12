@@ -11,27 +11,49 @@ function titleFromFilename(filename) {
     .replace(/\b\w/g, char => char.toUpperCase());
 }
 
+function stripHTML(value) {
+  return String(value || "").replace(/<[^>]+>/g, "").trim();
+}
+
+function decodeHTML(value) {
+  return String(value || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 function getAttr(html, attr) {
   const bodyMatch = html.match(/<body[^>]*>/i);
   const source = bodyMatch ? bodyMatch[0] : html;
-  const regex = new RegExp(`${attr}\\s*=\\s*["']([^"']*)["']`, "i");
-  const match = source.match(regex);
-  return match ? match[1].trim() : "";
+
+  const doubleQuoteRegex = new RegExp(`${attr}\\s*=\\s*"([^"]*)"`, "i");
+  const doubleMatch = source.match(doubleQuoteRegex);
+  if (doubleMatch) return decodeHTML(doubleMatch[1].trim());
+
+  const singleQuoteRegex = new RegExp(`${attr}\\s*=\\s*'([^']*)'`, "i");
+  const singleMatch = source.match(singleQuoteRegex);
+  if (singleMatch) return decodeHTML(singleMatch[1].trim());
+
+  return "";
 }
 
 function getMeta(html, key) {
   const attrValue = getAttr(html, `data-monster-${key.toLowerCase()}`);
   if (attrValue) return attrValue;
 
-  const patterns = [
-    new RegExp(`MONSTER_${key}:\\s*(.+)`, "i"),
-    new RegExp(`<meta\\s+name=["']monster:${key.toLowerCase()}["']\\s+content=["']([^"']+)["']`, "i")
-  ];
+  const commentPattern = new RegExp(`MONSTER_${key}:\\s*(.+)`, "i");
+  const commentMatch = html.match(commentPattern);
+  if (commentMatch) return decodeHTML(stripHTML(commentMatch[1]));
 
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match) return match[1].trim();
-  }
+  const metaPattern = new RegExp(
+    `<meta\\s+name=["']monster:${key.toLowerCase()}["']\\s+content=["']([^"']+)["']`,
+    "i"
+  );
+  const metaMatch = html.match(metaPattern);
+  if (metaMatch) return decodeHTML(metaMatch[1].trim());
 
   return "";
 }
@@ -40,16 +62,21 @@ function getTitle(html, fallback) {
   const dataTitle = getMeta(html, "TITLE");
   if (dataTitle) return dataTitle;
 
+  const dataName = getMeta(html, "NAME");
+  if (dataName) return dataName;
+
   const h1 = html.match(/<h1[^>]*>(.*?)<\/h1>/is);
-  if (h1) return h1[1].replace(/<[^>]+>/g, "").trim();
+  if (h1) return decodeHTML(stripHTML(h1[1]));
 
   const title = html.match(/<title[^>]*>(.*?)<\/title>/is);
-  if (title) return title[1].replace(/—.*$/, "").trim();
+  if (title) return decodeHTML(stripHTML(title[1]).replace(/—.*$/, "").trim());
 
   return fallback;
 }
 
 function scanDirectory(dir, baseDir = MONSTERS_DIR) {
+  if (!fs.existsSync(dir)) return [];
+
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   let monsters = [];
 
@@ -72,7 +99,7 @@ function scanDirectory(dir, baseDir = MONSTERS_DIR) {
       .split(path.sep)
       .filter(Boolean)[0];
 
-    const name = getMeta(html, "TITLE") || getMeta(html, "NAME") || getTitle(html, fallbackName);
+    const name = getTitle(html, fallbackName);
     const category = getMeta(html, "CATEGORY") || categoryFromFolder || "Uncategorized";
     const type = getMeta(html, "TYPE") || "Custom Monster";
 
@@ -80,8 +107,13 @@ function scanDirectory(dir, baseDir = MONSTERS_DIR) {
     const crNumber = Number(crRaw);
     const cr = Number.isFinite(crNumber) ? crNumber : "?";
 
-    const description = getMeta(html, "DESCRIPTION") || "A custom Sanctum monster codex entry.";
+    const description =
+      getMeta(html, "DESCRIPTION") || "A custom Sanctum monster codex entry.";
+
     const tagsRaw = getMeta(html, "TAGS");
+    const tags = tagsRaw
+      ? tagsRaw.split(",").map(tag => tag.trim()).filter(Boolean)
+      : ["Sanctum"];
 
     monsters.push({
       id: getMeta(html, "ID") || entry.name.replace(/\.html$/i, ""),
@@ -89,7 +121,7 @@ function scanDirectory(dir, baseDir = MONSTERS_DIR) {
       category,
       type,
       cr,
-      tags: tagsRaw ? tagsRaw.split(",").map(tag => tag.trim()).filter(Boolean) : ["Sanctum"],
+      tags,
       url: relativePath,
       description
     });
