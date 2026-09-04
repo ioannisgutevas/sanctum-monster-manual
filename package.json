@@ -1,0 +1,7 @@
+{
+  "name": "sanctum-monster-manual",
+  "private": true,
+  "scripts": {
+    "build": "node build-static.js"
+  }
+}
