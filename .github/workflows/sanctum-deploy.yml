@@ -1,0 +1,38 @@
+# SANCTUM-OWNED: sanctum-deploy-workflow v1
+# Generic Sanctum Shared App Host deploy. Application repos need only Sanctum deploy values.
+name: Sanctum Deploy
+
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Sanctum
+        env:
+          SANCTUM_DEPLOY_TOKEN: ${{ secrets.SANCTUM_DEPLOY_TOKEN }}
+          SANCTUM_APP_KEY: ${{ vars.SANCTUM_APP_KEY }}
+          SANCTUM_APPROVED_RUNTIME_ID: ${{ vars.SANCTUM_APPROVED_RUNTIME_ID }}
+          SANCTUM_DEPLOY_API: https://sanctumkeep.com/api/app-deploy/v1
+          SANCTUM_RELEASE_VERSION: ${{ github.sha }}
+        run: node .github/sanctum/deploy.mjs
